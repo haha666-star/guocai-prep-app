@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0A1B36" />
+    <title>国才笔译·备考台</title>
+    <meta name="description" content="国才笔译备考工作台 - 移动端 PWA 应用" />
+
+    <!-- iOS PWA 适配 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="国才笔译" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!-- 禁止自动识别 -->
+    <meta name="format-detection" content="telephone=no" />
+
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #0A1B36; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+
+      #app-frame {
+        position: fixed; inset: 0;
+        width: 100%; height: 100%;
+        border: 0; display: block;
+        background: #ffffff;
+        opacity: 0;
+        transition: opacity .35s ease;
+      }
+      #app-frame.ready { opacity: 1; }
+
+      /* 启动加载层 */
+      #splash {
+        position: fixed; inset: 0; z-index: 20;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: linear-gradient(180deg, #0E2350 0%, #12315E 55%, #17609B 100%);
+        color: #fff;
+        transition: opacity .4s ease, visibility .4s ease;
+      }
+      #splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+      #splash .logo { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+      #splash h1 { margin-top: 18px; font-size: 18px; font-weight: 600; letter-spacing: 1px; }
+      #splash .sub { margin-top: 6px; font-size: 12px; opacity: .65; letter-spacing: 2px; }
+      .spinner {
+        margin-top: 26px; width: 22px; height: 22px;
+        border: 2.5px solid rgba(255,255,255,.25); border-top-color: #FFC857;
+        border-radius: 50%; animation: spin .8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* 离线 / 加载失败提示 */
+      #notice {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+        background: rgba(20, 32, 54, .96); color: #fff;
+        font-size: 13px; line-height: 1.6; padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+        display: none; text-align: center;
+      }
+      #notice .btn {
+        display: inline-block; margin-top: 8px; padding: 6px 22px;
+        background: #FFC857; color: #1a1a1a; border-radius: 20px;
+        font-size: 13px; font-weight: 600; cursor: pointer; border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="app-frame" title="国才笔译·备考台" allow="camera; microphone; geolocation; fullscreen"></iframe>
+
+    <div id="splash">
+      <img class="logo" src="./icons/icon-192.png" alt="国才笔译" />
+      <h1>国才笔译·备考台</h1>
+      <div class="sub">正在加载工作台…</div>
+      <div class="spinner"></div>
+    </div>
+
+    <div id="notice">
+      网络似乎不可用，工作台需要联网加载。
+      <br /><button class="btn" id="reload-btn">重新加载</button>
+    </div>
+
+    <script>
+      var TARGET = "https://4m25wqkpa1s63.aiforce.cloud/app/app_17e5urnjjs3/";
+      var frame = document.getElementById("app-frame");
+      var splash = document.getElementById("splash");
+      var notice = document.getElementById("notice");
+      var loaded = false;
+      var timer = null;
+
+      function showNotice() {
+        notice.style.display = "block";
+      }
+      function hideNotice() {
+        notice.style.display = "none";
+      }
+
+      function onReady() {
+        loaded = true;
+        if (timer) { clearTimeout(timer); timer = null; }
+        splash.classList.add("hide");
+        hideNotice();
+      }
+
+      frame.onload = function () {
+        // 加载完成（可能成功或失败页，均视为可显示）
+        onReady();
+      };
+
+      frame.src = TARGET;
+
+      // 8 秒兜底：即便 onload 未触发也进入应用界面
+      timer = setTimeout(function () {
+        if (!loaded) { onReady(); }
+      }, 8000);
+
+      // 在线状态提示（iframe 内容跨域，壳层只能提示网络状态）
+      window.addEventListener("offline", showNotice);
+      window.addEventListener("online", function () {
+        hideNotice();
+        if (!loaded) { frame.src = TARGET; }
+        else { frame.src = TARGET; }
+      });
+      document.getElementById("reload-btn").addEventListener("click", function () {
+        frame.src = TARGET;
+        splash.classList.remove("hide");
+        timer = setTimeout(function () { if (!loaded) { onReady(); } }, 8000);
+      });
+
+      // 注册 Service Worker（PWA 离线壳 + 安装能力）
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("./sw.js").catch(function (e) {
+            console.warn("SW register failed:", e);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
